@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Invaders</title>
+    <style>
+      body {
+        background-color: #000128;
+      }
+      canvas {
+        background-color: antiquewhite;
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 70px;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="my_canvas" width="600" height="600"></canvas>
+    <script>
+      const my_Canvas = document.getElementById("my_canvas");
+      const ctx = my_Canvas.getContext("2d");
+
+      class Player {
+        constructor() {
+          this.position = {
+            x: 400,
+            y: 400,
+          };
+          this.velocity = {
+            x: 0,
+            y: 0,
+          };
+
+          this.image = new Image();
+          this.image.src = "HalconMillenario.png";
+
+          this.width = 100;
+          this.height = 100;
+
+          this.image.onload = () => {
+            this.draw();
+          };
+        }
+
+        draw() {
+          ctx.drawImage(
+            this.image,
+            this.position.x,
+            this.position.y,
+            this.width,
+            this.height
+          );
+        }
+      }
+
+      const player = new Player();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        player.draw();
+      }
+
+      animate();
+    </script>
+  </body>
+</html>
