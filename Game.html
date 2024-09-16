@@ -68,7 +68,7 @@
         constructor({ position, velocity }) {
           this.position = position;
           this.velocity = velocity;
-          this.radius = 3;
+          this.radius = 4;
         }
         draw() {
           ctx.beginPath();
@@ -82,6 +82,25 @@
           ctx.fillStyle = "red";
           ctx.fill();
           ctx.closePath();
+        }
+        update() {
+          this.draw();
+          this.position.x += this.velocity.x;
+          this.position.y += this.velocity.y;
+        }
+      }
+
+      class EnemyProjectile {
+        constructor({ position, velocity }) {
+          this.position = position;
+          this.velocity = velocity;
+
+          this.width = 3;
+          this.height = 10
+        }
+        draw() {
+          ctx.fillStyle = 'green'
+          ctx.fillRect(this.position.x, this.position.y, this.width, this.height)
         }
         update() {
           this.draw();
@@ -128,6 +147,18 @@
             this.position.y += velocity.y;
           }
         }
+        shoot(enemyProjectiles) {
+          enemyProjectiles.push(new EnemyProjectile({
+            position: {
+              x: this.position.x + this.width / 2,
+              y: this.position.y + this.height,
+            },
+            velocity: {
+              x: 0,
+              y: 5,
+            }
+          }))
+        }
       }
       class Grid {
   constructor() {
@@ -143,11 +174,10 @@
 
     const columns = 10;
     const rows = 4;
-    const tieWidth = 50; // Ancho de cada Tie Fighter
-    const tieHeight = 40; // Alto de cada Tie Fighter (incluye espacio entre filas)
-    const rowSpacing = 10; // Espacio entre las filas
+    const tieWidth = 50; 
+    const tieHeight = 40; 
+    const rowSpacing = 10; 
 
-    // Ajustar el ancho del grid en función del número de columnas y el tamaño de cada enemigo
     this.width = columns * tieWidth;
 
     for (let x = 0; x < columns; x++) {
@@ -163,13 +193,13 @@
       }
     }
   }
-
+  
   update() {
     this.position.x += this.velocity.x;
     this.position.y += this.velocity.y;
-
+    
     this.velocity.y = 0
-
+    
     if (this.position.x + this.width >= my_Canvas.width || this.position.x <= 0) {
       this.velocity.x = -this.velocity.x;
       this.velocity.y = 30
@@ -177,28 +207,42 @@
   }
 }
 
-
-
-
-      const player = new Player();
-      const projectiles = [];
-      const grids = [];
-      const keys = {
-        a: {
-          pressed: false,
-        },
-        d: {
-          pressed: false,
-        },
+const player = new Player();
+const projectiles = [];
+const grids = [];
+const enemyProjectiles = []
+const keys = {
+  a: {
+    pressed: false,
+  },
+  d: {
+    pressed: false,
+  },
       };
-
+      
       let frames = 0
-
+      
       function animate() {
         requestAnimationFrame(animate);
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, my_Canvas.width, my_Canvas.height);
         player.update();
+        
+        enemyProjectiles.forEach((enemyProjectile, index) => {
+          if (enemyProjectile.position.y + enemyProjectile.height >= my_canvas.height) {
+            setTimeout(() => {
+              enemyProjectiles.splice(index, 1);
+            }, 0);
+          }else 
+          enemyProjectile.update()
+
+          if (enemyProjectile.position.y + enemyProjectile.height >= player.position.y && 
+          enemyProjectile.position.x + enemyProjectile.width >= player.position.x && 
+          enemyProjectile.position.x <= player.position.x + player.width) {
+            console.log("Perdiste menso")
+          }
+
+        })
         projectiles.forEach((projectile, index) => {
           if (projectile.position.y + projectile.radius < 0) {
             setTimeout(() => {
@@ -208,13 +252,51 @@
             projectile.update();
           }
         });
-
-        grids.forEach((grid) => {
+        
+        grids.forEach((grid, gridIndex) => {
           grid.update();
-          grid.ties.forEach((tie) => {
-            tie.update({velocity: grid.velocity});
-          });
-        });
+          if (frames % 100 === 0 && grid.ties.length > 0) {
+            grid.ties[Math.floor(Math.random() * grid.ties.length)].shoot(enemyProjectiles)
+          }
+          
+  const tiesToRemove = [];
+  const projectilesToRemove = [];
+
+  grid.ties.forEach((tie, i) => {
+    tie.update({ velocity: grid.velocity });
+
+    projectiles.forEach((projectile, j) => {
+      if (
+        projectile.position.y - projectile.radius <= tie.position.y + tie.height &&
+        projectile.position.x + projectile.radius >= tie.position.x &&
+        projectile.position.x - projectile.radius <= tie.position.x + tie.width &&
+        projectile.position.y + projectile.radius >= tie.position.y
+      ) {
+        tiesToRemove.push(i);
+        projectilesToRemove.push(j);
+      }
+    });
+  });
+
+  tiesToRemove.reverse().forEach(index => {
+    grid.ties.splice(index, 1);
+  });
+
+  projectilesToRemove.reverse().forEach(index => {
+    projectiles.splice(index, 1);
+  });
+
+  if (grid.ties.length > 0) {
+    const firstTie = grid.ties[0];
+    const lastTie = grid.ties[grid.ties.length - 1];
+    grid.width = lastTie.position.x - firstTie.position.x + lastTie.width;
+    grid.position.x = firstTie.position.x;
+  } else {
+    grids.splice(gridIndex, 1);
+  }
+});
+
+
 
         if (keys.a.pressed && player.position.x >= 0) {
           player.velocity.x = -5;
