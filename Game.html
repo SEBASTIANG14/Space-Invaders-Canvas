@@ -21,6 +21,17 @@
   </head>
   <body>
     <canvas id="my_canvas" width="1000" height="700"></canvas>
+    <div id="instructions" style="position: absolute; bottom: 20px; right: 20px; color: white; font-family: Arial; font-size: 12px;">
+      <h2>Cómo Jugar</h2>
+      <p><strong>Movimientos:</strong></p>
+      <p>A: Mover a la izquierda</p>
+      <p>D: Mover a la derecha</p>
+      <p><strong>Disparos:</strong></p>
+      <p>Espacio: Disparar</p>
+      <p><strong>Objetivo:</strong></p>
+      <p>Elimina a todos los enemigos para ganar.</p>
+    </div>
+    
     <script>
       const my_Canvas = document.getElementById("my_canvas");
       const ctx = my_Canvas.getContext("2d");
@@ -32,6 +43,7 @@
             y: 0,
           };
 
+          this.opacity = 1
           this.image = new Image();
           this.image.src = "HalconMillenario.png";
           this.image.onload = () => {
@@ -48,6 +60,8 @@
         }
 
         draw() {
+          ctx.save()
+          ctx.globalAlpha = this.opacity
           ctx.drawImage(
             this.image,
             this.position.x,
@@ -55,6 +69,7 @@
             this.width,
             this.height
           );
+          ctx.restore()
         }
         update() {
           if (this.loaded) {
@@ -95,17 +110,50 @@
           this.position = position;
           this.velocity = velocity;
 
-          this.width = 3;
-          this.height = 10
+          this.width = 4;
+          this.height = 18
         }
         draw() {
-          ctx.fillStyle = 'green'
+          ctx.fillStyle = '#23ff00'
           ctx.fillRect(this.position.x, this.position.y, this.width, this.height)
         }
         update() {
           this.draw();
           this.position.x += this.velocity.x;
           this.position.y += this.velocity.y;
+        }
+      }
+
+      class Impacto {
+        constructor({ position, velocity, radius, color }) {
+          this.position = position;
+          this.velocity = velocity;
+          this.radius = radius
+          this.color = color;
+          this.opacity = 1
+        }
+        draw() {
+          ctx.save()
+          ctx.globalAlpha = this.opacity
+          ctx.beginPath();
+          ctx.arc(
+            this.position.x,
+            this.position.y,
+            this.radius,
+            0,
+            Math.PI * 2
+          );
+          ctx.fillStyle = this.color;
+          ctx.fill();
+          ctx.closePath();
+          ctx.restore()
+        }
+        update() {
+          this.draw();
+          this.position.x += this.velocity.x;
+          this.position.y += this.velocity.y;
+
+          this.opacity -= 0.01
         }
       }
 
@@ -211,6 +259,7 @@ const player = new Player();
 const projectiles = [];
 const grids = [];
 const enemyProjectiles = []
+const impactos = []
 const keys = {
   a: {
     pressed: false,
@@ -220,13 +269,65 @@ const keys = {
   },
       };
       
-      let frames = 0
-      
-      function animate() {
+let frames = 0
+let game = {
+  over: false,
+  active: true
+}
+let score = 0
+
+function drawScore() {
+  ctx.font = '20px Arial'; 
+  ctx.fillStyle = 'white'; 
+  ctx.fillText(`Score: ${score}`, 20, 30); 
+}
+
+
+function crearExplosion({object, color}) {
+  for (let k = 0; k < 15; k++) {
+    impactos.push(
+      new Impacto({
+        position: {
+          x: object.position.x + object.width / 2,
+          y: object.position.y + object.height / 2,
+        },
+        velocity: {
+          x: (Math.random() - 0.5) * 2,
+          y: (Math.random() - 0.5) * 2,
+        },
+        radius: Math.random() * 3,
+        color: color || 'green'
+      })
+    );
+  }
+}
+
+function mostrarGameOver() {
+    game.active = false;
+    setTimeout(() => {
+        window.location.href = "GameOver.html";
+    }, 0); 
+}
+const backgroundImage = new Image();
+backgroundImage.src = 'fondoGame.jpg';
+    
+  backgroundImage.onload = () => {
+      function animate() {       
+        if (!game.active) return
         requestAnimationFrame(animate);
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, my_Canvas.width, my_Canvas.height);
+        ctx.drawImage(backgroundImage, 0, 0, my_Canvas.width, my_Canvas.height);
+        drawScore();
         player.update();
+
+        impactos.forEach((impacto, i) => {
+          if (impacto.opacity <= 0) {
+            setTimeout(() => {
+              impactos.splice(i, 1)     
+            }, 0);
+          }else{
+            impacto.update()
+          }
+        })
         
         enemyProjectiles.forEach((enemyProjectile, index) => {
           if (enemyProjectile.position.y + enemyProjectile.height >= my_canvas.height) {
@@ -239,7 +340,20 @@ const keys = {
           if (enemyProjectile.position.y + enemyProjectile.height >= player.position.y && 
           enemyProjectile.position.x + enemyProjectile.width >= player.position.x && 
           enemyProjectile.position.x <= player.position.x + player.width) {
-            console.log("Perdiste menso")
+          console.log("Perdiste menso")
+          setTimeout(() => {
+              enemyProjectiles.splice(index, 1);
+              player.opacity = 0
+              game.over = true
+            }, 0);
+            setTimeout(() => {
+              game.active = false
+              mostrarGameOver()
+            }, 2000);
+          crearExplosion({
+            object: player,
+            color: 'red'
+          })
           }
 
         })
@@ -254,11 +368,11 @@ const keys = {
         });
         
         grids.forEach((grid, gridIndex) => {
-          grid.update();
-          if (frames % 100 === 0 && grid.ties.length > 0) {
-            grid.ties[Math.floor(Math.random() * grid.ties.length)].shoot(enemyProjectiles)
-          }
-          
+  grid.update();
+  if (frames % 100 === 0 && grid.ties.length > 0) {
+    grid.ties[Math.floor(Math.random() * grid.ties.length)].shoot(enemyProjectiles);
+  }
+
   const tiesToRemove = [];
   const projectilesToRemove = [];
 
@@ -272,8 +386,16 @@ const keys = {
         projectile.position.x - projectile.radius <= tie.position.x + tie.width &&
         projectile.position.y + projectile.radius >= tie.position.y
       ) {
-        tiesToRemove.push(i);
-        projectilesToRemove.push(j);
+        if (!tiesToRemove.includes(i) && !projectilesToRemove.includes(j)) {
+          tiesToRemove.push(i);
+          projectilesToRemove.push(j);
+
+          score += 5;
+
+          crearExplosion({
+            object: tie,
+          })
+        }
       }
     });
   });
@@ -298,6 +420,7 @@ const keys = {
 
 
 
+
         if (keys.a.pressed && player.position.x >= 0) {
           player.velocity.x = -5;
         } else if (
@@ -317,8 +440,10 @@ const keys = {
       }
 
       animate();
+  }
 
       window.addEventListener("keydown", ({ key }) => {
+        if (game.over) return
         switch (key) {
           case "a":
             keys.a.pressed = true;
